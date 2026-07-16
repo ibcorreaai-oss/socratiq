@@ -7,6 +7,17 @@ import { logOutAction } from "../(auth)/actions";
 import { Badge } from "@/components/ui/badge";
 import { xpForNextLevel } from "@/lib/xp";
 
+// Explicit, not just implied by cookies() usage: the XP/level/streak badge
+// here comes from a `profiles` row that finish_quest_attempt mutates via a
+// direct Supabase RPC call (not a Server Action/Route Handler), so Next.js
+// has no revalidation signal for it. Without forcing this segment fully
+// dynamic, the header kept rendering pre-battle XP/level across the
+// quest -> results -> dashboard navigation chain even after a hard
+// staleTimes:0 Router Cache setting — confirmed live by playing a quest,
+// checking the DB had the new XP, and still seeing the old value on both
+// the results page and dashboard until a full reload.
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getUserContext();
   if (!ctx) redirect("/login");
