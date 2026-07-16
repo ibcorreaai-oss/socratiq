@@ -15,8 +15,19 @@ export async function createQuestFromContent(
   opts: { sourceType: SourceType; content: string; topicHint?: string }
 ) {
   const { sourceType, content, topicHint } = opts;
-  if (content.trim().length < 20) {
-    throw new Error("That's not enough material to forge a quest from — add a bit more.");
+  // "topic" mode submits just a subject name (e.g. "Photosynthesis", 14 chars)
+  // as `content` — there's no substantive material to require a minimum
+  // length for for. The 20-char floor only makes sense for "text"/"pdf" mode,
+  // where it catches near-empty pastes/uploads. Using it unconditionally
+  // rejected almost any real topic name, including the placeholder example
+  // ("Photosynthesis") shown right above the input on /quest/new.
+  const minLength = sourceType === "topic" ? 2 : 20;
+  if (content.trim().length < minLength) {
+    throw new Error(
+      sourceType === "topic"
+        ? "Give the Sage a topic name to work with."
+        : "That's not enough material to forge a quest from — add a bit more.",
+    );
   }
 
   const generated = await generateQuest(content, topicHint);
