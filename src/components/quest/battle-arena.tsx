@@ -166,6 +166,14 @@ export function BattleArena({
 
   async function finishAndRedirect(id: string) {
     await supabase.rpc("finish_quest_attempt", { p_quest_attempt_id: id });
+    // finish_quest_attempt mutates profiles.xp/level/streak_count via a
+    // Supabase RPC call, not a Next.js Server Action — the App Router has no
+    // way to know the shared (app) layout's server-fetched profile data is
+    // now stale, so its cached render (XP/level/streak badge in the header)
+    // would keep showing pre-battle values until a hard reload. `refresh()`
+    // invalidates that cache so the header picks up the new XP/level on the
+    // very next navigation instead of looking like the reward never landed.
+    router.refresh();
     router.push(`/quest/${questId}/results?attempt=${id}`);
   }
 
