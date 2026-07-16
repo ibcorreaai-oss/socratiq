@@ -51,6 +51,7 @@ export function BattleArena({
   const [hintLoading, setHintLoading] = useState(false);
   const [totalXp, setTotalXp] = useState(0);
   const [questCompleted, setQuestCompleted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const question = questions[index];
 
@@ -70,7 +71,12 @@ export function BattleArena({
   }, [questId]);
 
   async function pickChoice(choiceIndex: number) {
-    if (!attemptId || phase !== "question") return;
+    // Guards against a fast double-click firing two `submit_answer` calls for
+    // the same question before `phase` state updates — the DB now rejects
+    // the second one too (unique constraint), but disabling immediately here
+    // avoids even sending it and keeps the UI from flashing two outcomes.
+    if (!attemptId || phase !== "question" || submitting) return;
+    setSubmitting(true);
     setChosen(choiceIndex);
 
     const { data, error } = await supabase.rpc("submit_answer", {
@@ -79,6 +85,8 @@ export function BattleArena({
       p_chosen_index: choiceIndex,
       p_used_hint: false,
     });
+
+    setSubmitting(false);
 
     if (error || !data?.[0]) {
       toast.error("That didn't go through — try again.");
@@ -228,7 +236,7 @@ export function BattleArena({
                     return (
                       <button
                         key={i}
-                        disabled={phase !== "question"}
+                        disabled={phase !== "question" || submitting}
                         onClick={() => pickChoice(i)}
                         className={cn(
                           "flex items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
@@ -312,7 +320,9 @@ export function BattleArena({
         {phase === "finishing" && (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
             <Sparkles className="size-8 text-gold" />
-            <p className="font-display text-lg">{bossName} has fallen.</p>
+            <p className="font-display text-lg">
+              {bossHp <= 0 ? `${bossName} has fallen.` : "Quest complete."}
+            </p>
             <p className="text-sm text-muted">Tallying {totalXp} XP…</p>
             <Loader2 className="size-5 animate-spin text-muted" />
           </div>
