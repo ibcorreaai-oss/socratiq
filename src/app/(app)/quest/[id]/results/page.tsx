@@ -38,9 +38,14 @@ export default async function QuestResultsPage({
   const correct = questionAttempts?.filter((q) => q.is_correct).length ?? 0;
   const bossDefeated = attempt.boss_hp <= 0;
 
+  // Scoped to THIS quest's concepts — without the join filter, a user who has
+  // played another quest more recently would see that quest's mastery data
+  // here instead (concept_mastery is global per user+concept, ordered by
+  // updated_at, so "most recent" isn't necessarily "from this run").
   const { data: concepts } = await supabase
     .from("concept_mastery")
-    .select("concept_name, mastery_pct, due_at")
+    .select("concept_name, mastery_pct, due_at, concepts!inner(quest_id)")
+    .eq("concepts.quest_id", id)
     .order("updated_at", { ascending: false })
     .limit(10);
 
